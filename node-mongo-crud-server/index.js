@@ -1,8 +1,11 @@
 const express = require('express');
 const cors = require('cors');
 const { MongoClient } = require('mongodb');
+const ObjectId = require('mongodb').ObjectId;
 
 const app = express();
+
+// Middleware
 app.use(cors());
 app.use(express.json());
 
@@ -20,17 +23,76 @@ async function run() {
         const database = client.db("foodMaster");
         const userCollection = database.collection("users");
 
-        const doc = {
-            name: 'Special Two',
-            email: 'special2@hotmail.com',
-            phone: '01433333334444'
-        }
+        // GET API
+        app.get('/users', async (req, res) => {
+            const cursor = userCollection.find({});
+            const users = await cursor.toArray();
+            res.send(users);
+        })
 
-        const result = await userCollection.insertOne(doc);
+        // GET:Id
+        app.get('/users/:id', async (req, res) => {
+            const id = req.params.id;
 
-        console.log(`A document was inserted with the _id: ${result.insertedId}`);
+            const query = {_id: ObjectId(id)};
+            const result = await userCollection.findOne(query);
+
+            console.log("Find User: ", result);
+            res.json(result);
+        })
+
+        // POST API
+        app.post('/users', async (req, res) => {
+            const newUser = req.body;
+            const result = await userCollection.insertOne(newUser);
+            
+            console.log("got new user", req.body);
+            console.log("Added user", result)
+            res.json(result);
+        })
+
+        // UPDATE / PUT
+        app.put('/users/:id', async (req, res) => {
+            const id = req.params.id;
+            const updatedUser =  req.body;
+
+            const filter = { _id: ObjectId(id) };
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: {
+                  name: updatedUser.name,
+                  email: updatedUser.email
+                },
+              };
+
+            const result = await userCollection.updateOne(filter, updateDoc, options);
+
+            console.log("updating user ", result);
+            res.json(result);
+        })
+
+        // DELETE API
+        app.delete('/users/:id', async (req, res) => {
+            const id = req.params.id;
+
+            const query = {_id: ObjectId(id)};
+            const result = await userCollection.deleteOne(query);
+
+            console.log('deleting user with id ', result);
+            res.json(result);
+        })
+
+        // const doc = {
+        //     name: 'Special Two',
+        //     email: 'special2@hotmail.com',
+        //     phone: '01433333334444'
+        // }
+
+        // const result = await userCollection.insertOne(doc);
+
+        // console.log(`A document was inserted with the _id: ${result.insertedId}`);
     } finally {
-        await client.close();
+        // await client.close();
     }
 }
 
